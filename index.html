@@ -119,7 +119,6 @@
       const totalPnlDisplay = document.getElementById("total-pnl");
       const breakEvenDisplay = document.getElementById("break-even-point");
       const svg = d3.select("#pnl-chart");
-
       const margin = { top: 20, right: 20, bottom: 30, left: 50 };
 
       function formatCurrency(val) {
@@ -130,41 +129,46 @@
         totalUnits = parseFloat(unitsInput.value) || 0;
         buyPrice = parseFloat(buyPriceInput.value) || 0;
         totalCost = totalUnits * buyPrice;
-
         totalCostDisplay.textContent = formatCurrency(totalCost);
         unitsLeftDisplay.textContent = totalUnits;
         if (totalUnits > 0 && buyPrice > 0) {
           section.classList.remove("pointer-events-none");
           section.classList.remove("opacity-0");
         }
+        updatePreview();
       }
 
-      function updateSummary() {
-        const totalRevenue = salesData.reduce((sum, s) => sum + s.units * s.price, 0);
-        const sold = salesData.reduce((sum, s) => sum + s.units, 0);
-        const pnl = totalRevenue - totalCost;
+      function computeTotals(tempData) {
+        const allSales = [...salesData, ...tempData];
+        const totalRevenue = allSales.reduce((sum, s) => sum + s.units * s.price, 0);
+        const totalSold = allSales.reduce((sum, s) => sum + s.units, 0);
+        return { totalRevenue, totalSold, pnl: totalRevenue - totalCost };
+      }
 
+      function updateUI(tempData = []) {
+        const { totalRevenue, totalSold, pnl } = computeTotals(tempData);
         totalRevenueDisplay.textContent = formatCurrency(totalRevenue);
-        totalUnitsSoldDisplay.textContent = sold;
-        unitsLeftDisplay.textContent = totalUnits - sold;
+        totalUnitsSoldDisplay.textContent = totalSold;
+        unitsLeftDisplay.textContent = totalUnits - totalSold;
         totalPnlDisplay.textContent = formatCurrency(pnl);
         totalPnlDisplay.classList.toggle("text-green-600", pnl >= 0);
         totalPnlDisplay.classList.toggle("text-red-600", pnl < 0);
-
-        const breakEvenUnits = totalCost / (salesData[salesData.length - 1]?.price || buyPrice);
+        const latestPrice = (tempData.at(-1)?.price) || (salesData.at(-1)?.price) || buyPrice;
+        const breakEvenUnits = totalCost / latestPrice;
         breakEvenDisplay.textContent = pnl >= 0
           ? "You've reached break-even!"
           : `Need about ${Math.ceil(breakEvenUnits)} units to break even.`;
       }
 
-      function updateChart() {
+      function updateChart(tempData = []) {
         svg.selectAll("*").remove();
         const container = document.getElementById("chart-container");
         const width = container.clientWidth - margin.left - margin.right;
         const height = container.clientHeight - margin.top - margin.bottom;
-
         let cumulativeUnits = 0, cumulativeRevenue = 0;
-        const data = salesData.map(s => {
+
+        const combined = [...salesData, ...tempData];
+        const data = combined.map(s => {
           cumulativeUnits += s.units;
           cumulativeRevenue += s.units * s.price;
           return { cumulative_units: cumulativeUnits, pnl: cumulativeRevenue - totalCost };
@@ -189,24 +193,39 @@
           .attr("d", line);
       }
 
-      // Interactive listeners
+      function updatePreview() {
+        const units = parseFloat(saleUnitsInput.value);
+        const price = parseFloat(salePriceInput.value);
+        if (totalUnits <= 0 || buyPrice <= 0) return;
+        if (isNaN(units) || isNaN(price) || units <= 0 || price <= 0) {
+          updateUI();
+          updateChart();
+          return;
+        }
+        const soldSoFar = salesData.reduce((sum, s) => sum + s.units, 0);
+        if (soldSoFar + units > totalUnits) return;
+        updateUI([{ units, price }]);
+        updateChart([{ units, price }]);
+      }
+
+      // Input listeners for live preview
       unitsInput.addEventListener("input", updateBase);
       buyPriceInput.addEventListener("input", updateBase);
+      saleUnitsInput.addEventListener("input", updatePreview);
+      salePriceInput.addEventListener("input", updatePreview);
 
+      // Add Sale locks in
       addSaleBtn.addEventListener("click", () => {
         const units = parseFloat(saleUnitsInput.value);
         const price = parseFloat(salePriceInput.value);
         if (!units || !price) return alert("Enter valid sale data");
-
         const soldSoFar = salesData.reduce((sum, s) => sum + s.units, 0);
         if (soldSoFar + units > totalUnits) return alert("Cannot sell more units than purchased!");
-
         salesData.push({ units, price });
-        updateSummary();
-        updateChart();
-
         saleUnitsInput.value = "";
         salePriceInput.value = "";
+        updateUI();
+        updateChart();
       });
     });
   </script>
