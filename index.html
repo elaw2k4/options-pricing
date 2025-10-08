@@ -63,11 +63,13 @@
             </div>
             
             <!-- Buttons -->
-            <div class="flex space-x-3">
+            <div class="flex flex-wrap gap-3">
               <button type="button" id="add-sale-btn"
                 class="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition">Add Sale</button>
               <button type="button" id="remove-last-sale-btn"
                 class="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition">Remove Last Sale</button>
+              <button type="button" id="reset-btn"
+                class="flex-1 bg-gray-500 text-white py-2 rounded-lg hover:bg-gray-600 transition">Reset All</button>
             </div>
           </form>
 
@@ -116,6 +118,7 @@
       const section = document.getElementById("interactive-section");
       const addSaleBtn = document.getElementById("add-sale-btn");
       const removeSaleBtn = document.getElementById("remove-last-sale-btn");
+      const resetBtn = document.getElementById("reset-btn");
       const saleUnitsInput = document.getElementById("sale-units");
       const salePriceInput = document.getElementById("sale-price");
 
@@ -249,6 +252,21 @@
         salesData.pop();
         updateUI();
         updateChart();
+      });
+      // ✅ Reset everything
+      resetBtn.addEventListener("click", () => {
+        if (!confirm("Reset all data?")) return;
+        totalUnits = 0; buyPrice = 0; totalCost = 0; salesData = [];
+        unitsInput.value = ""; buyPriceInput.value = "";
+        saleUnitsInput.value = ""; salePriceInput.value = "";
+        totalCostDisplay.textContent = "$0.00";
+        totalRevenueDisplay.textContent = "$0.00";
+        totalUnitsSoldDisplay.textContent = "0";
+        unitsLeftDisplay.textContent = "0";
+        totalPnlDisplay.textContent = "$0.00";
+        breakEvenDisplay.textContent = "Enter data to begin.";
+        svg.selectAll("*").remove();
+        section.classList.add("opacity-0", "pointer-events-none");
       });
     });
   </script>
